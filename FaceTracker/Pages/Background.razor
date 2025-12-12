@@ -1,11 +1,10 @@
-﻿@page "/mask"
-@rendermode InteractiveServer
+﻿@page "/background"
 
-<PageTitle>Сырая маска</PageTitle>
+<PageTitle>Удаление заднего фона</PageTitle>
 
 <div class="container">
     <div class="row g-4">
-        <h2 class="mb-4">Сырая маска</h2>
+        <h2 class="mb-4">Удаление заднего фона</h2>
 
         <div class="col-md-6">
             <div class="border p-3" style="height: 500px; display:flex; align-items:center; justify-content:center;">
@@ -41,7 +40,7 @@
     private bool _isWaiting = false;
     private string? _processedImageBase64;
 
-    private const string API_LINK = "http://localhost:8000/api/mask";
+    private const string API_LINK = "http://localhost:8000/api/background";
 
     private async Task OnFileChange(InputFileChangeEventArgs e) {
         IBrowserFile file = e.File;
