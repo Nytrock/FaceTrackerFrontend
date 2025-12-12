@@ -1,0 +1,41 @@
+﻿@page "/mask"
+@rendermode InteractiveServer
+
+<h3>Mask</h3>
+
+<InputFile Onchange="OnFileChange" accept="image/*" />
+<button @onclick="SendImage" disabled="@(_fileBytes is null)">Отправить</button>
+
+@if (_processedImageBase64 != null) {
+    <img src="@($"data:image/png;base64,{_processedImageBase64}")" style="max-width:400px;" />
+}
+
+@code {
+    private byte[]? _fileBytes;
+    private string? _processedImageBase64;
+    private const string _apiLink = "http://localhost:8000/api/mask";
+
+    private async Task OnFileChange(InputFileChangeEventArgs e) {
+        IBrowserFile file = e.File;
+        using var stream = file.OpenReadStream();
+        using var ms = new MemoryStream();
+        await stream.CopyToAsync(ms);
+        _fileBytes = ms.ToArray();
+    }
+
+    private async Task SendImage() {
+        if (_fileBytes is null)
+            return;
+
+        HttpClient client = new();
+        MultipartFormDataContent content = new();
+        content.Add(new ByteArrayContent(_fileBytes), "file", "upload.png");
+
+        HttpResponseMessage response = await client.PostAsync(_apiLink, content);
+        if (!response.IsSuccessStatusCode)
+            return;
+
+        byte[] resultBytes = await response.Content.ReadAsByteArrayAsync();
+        _processedImageBase64 = Convert.ToBase64String(resultBytes);
+    }
+}
