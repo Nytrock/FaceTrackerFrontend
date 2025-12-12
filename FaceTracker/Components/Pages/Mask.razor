@@ -59,7 +59,7 @@
 
         HttpClient client = new();
         MultipartFormDataContent content = new();
-        content.Add(new ByteArrayContent(_loadedImageBytes), "file", "upload.png");
+        content.Add(new ByteArrayContent(_loadedImageBytes), "image", "upload.png");
 
         _isWaiting = true;
         
