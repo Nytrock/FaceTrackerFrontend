@@ -1,41 +1,81 @@
 ﻿@page "/mask"
 @rendermode InteractiveServer
 
-<h3>Mask</h3>
+<PageTitle>Сырая маска</PageTitle>
 
-<InputFile Onchange="OnFileChange" accept="image/*" />
-<button @onclick="SendImage" disabled="@(_fileBytes is null)">Отправить</button>
+<div class="container">
+    <div class="row g-4">
+        <h2 class="mb-4">Сырая маска</h2>
 
-@if (_processedImageBase64 != null) {
-    <img src="@($"data:image/png;base64,{_processedImageBase64}")" style="max-width:400px;" />
-}
+        <div class="col-md-6">
+            <div class="border p-3" style="height: 500px; display:flex; align-items:center; justify-content:center;">
+                @if (_loadedImageBase64 is null) {
+                    <InputFile Onchange="OnFileChange" accept="image/*" class="form-control" />
+                } else {
+                    <img src="@($"data:image/png;base64,{_loadedImageBase64}")" style="max-width:100%; max-height:100%; object-fit: contain;" />
+                }
+            </div>
+
+            <div class="d-flex gap-3 mt-3">
+                <button class="btn btn-primary" @onclick="SendImage" disabled="@(_loadedImageBytes is null == _processedImageBase64 is null || _isWaiting)">Начать</button>
+                <button class="btn btn-secondary" @onclick="Reset">Сброс</button>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="border p-3" style="height: 500px; display:flex; align-items:center; justify-content:center;">
+                @if (_processedImageBase64 != null) {
+                    <img src="@($"data:image/png;base64,{_processedImageBase64}")" style="max-width:100%; max-height:100%; object-fit: contain;" />
+                } else if (_isWaiting) {
+                    <div class="spinner-border" role="status" style="width: 4rem; height: 4rem;"></div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
 
 @code {
-    private byte[]? _fileBytes;
+    private byte[]? _loadedImageBytes;
+    private string? _loadedImageBase64;
+
+    private bool _isWaiting = false;
     private string? _processedImageBase64;
-    private const string _apiLink = "http://localhost:8000/api/mask";
+
+    private const string API_LINK = "http://localhost:8000/api/mask";
 
     private async Task OnFileChange(InputFileChangeEventArgs e) {
         IBrowserFile file = e.File;
-        using var stream = file.OpenReadStream();
+        using var stream = file.OpenReadStream(10 * 1024 * 1024);
         using var ms = new MemoryStream();
         await stream.CopyToAsync(ms);
-        _fileBytes = ms.ToArray();
+
+        _loadedImageBytes = ms.ToArray();
+        _loadedImageBase64 = Convert.ToBase64String(_loadedImageBytes);
     }
 
     private async Task SendImage() {
-        if (_fileBytes is null)
+        if (_loadedImageBytes is null)
             return;
 
         HttpClient client = new();
         MultipartFormDataContent content = new();
-        content.Add(new ByteArrayContent(_fileBytes), "file", "upload.png");
+        content.Add(new ByteArrayContent(_loadedImageBytes), "file", "upload.png");
 
-        HttpResponseMessage response = await client.PostAsync(_apiLink, content);
+        _isWaiting = true;
+        
+        HttpResponseMessage response = await client.PostAsync(API_LINK, content);
+        _isWaiting = false;
         if (!response.IsSuccessStatusCode)
             return;
 
         byte[] resultBytes = await response.Content.ReadAsByteArrayAsync();
         _processedImageBase64 = Convert.ToBase64String(resultBytes);
+    } 
+
+    private void Reset() {
+        _loadedImageBytes = null;
+        _loadedImageBase64 = null;
+        _processedImageBase64 = null;
+        _isWaiting = false;
     }
 }
